@@ -96,7 +96,8 @@
         const Info = (props) => <Icon name="Info" {...props} />;
         const Users = (props) => <Icon name="Users" {...props} />;
         const ChevronLeft = (props) => <Icon name="ChevronLeft" {...props} />;
-
+        const Download = (props) => <Icon name="Download" {...props} />;
+        const Upload = (props) => <Icon name="Upload" {...props} />;
 
         // --- BİLEŞENLER ---
         const Card = ({ children, className = "" }) => (
@@ -115,7 +116,7 @@
           </div>
         );
 
-        // --- SABİT VERİLER & VARSAYILANLAR (AYT/YDT EKLENDİ) ---
+        // --- SABİT VERİLER & VARSAYILANLAR ---
         const yksKonulari = {
           "TYT Türkçe": ["Sözcükte Anlam", "Söz Yorumu", "Deyim ve Atasözü", "Cümlede Anlam", "Paragraf", "Paragrafta Anlatım Teknikleri", "Paragrafta Düşünceyi Geliştirme Yolları", "Paragrafta Yapı", "Paragrafta Konu-Ana Düşünce", "Paragrafta Yardımcı Düşünce", "Ses Bilgisi", "Yazım Kuralları", "Noktalama İşaretleri", "Sözcükte Yapı/Ekler", "İsimler", "Zamirler", "Sıfatlar", "Zarflar", "Edat - Bağlaç - Ünlem", "Fiilde Anlam (Kip-Kişi-Yapı)", "Ek Fiil", "Fiilimsi", "Fiilde Çatı", "Sözcük Grupları", "Cümlenin Ögeleri", "Cümle Türleri", "Anlatım Bozukluğu"],
           "TYT Matematik": ["Temel Kavramlar", "Sayı Basamakları", "Bölme ve Bölünebilme", "EBOB - EKOK", "Rasyonel Sayılar", "Basit Eşitsizlikler", "Mutlak Değer", "Üslü Sayılar", "Köklü Sayılar", "Çarpanlara Ayırma", "Oran Orantı", "Denklem Çözme", "Sayı Problemleri", "Kesir Problemleri", "Yaş Problemleri", "Hareket Hız Problemleri", "İşçi Emek Problemleri", "Yüzde Problemleri", "Kar Zarar Problemleri", "Karışım Problemleri", "Grafik Problemleri", "Rutin Olmayan Problemleri", "Kümeler - Kartezyen Çarpım", "Mantık", "Fonksiyonlar", "Polinomlar", "2.Dereceden Denklemler", "Permütasyon ve Kombinasyon", "Olasılık", "Veri - İstatistik"],
@@ -205,6 +206,13 @@
             }
           };
 
+          const handleImportData = (importedData) => {
+            if (window.confirm("Mevcut verileriniz tamamen silinip yerine yüklediğiniz dosyadaki veriler getirilecek. Emin misiniz?")) {
+              setStudents(importedData);
+              alert("Veriler başarıyla yüklendi!");
+            }
+          };
+
           // AKTİF ÖĞRENCİ GÖRÜNÜMÜ
           if (activeStudentId) {
             const activeStudent = students.find(s => s.id === activeStudentId);
@@ -223,25 +231,76 @@
           }
 
           // KOÇLUK PANELİ (DASHBOARD) GÖRÜNÜMÜ
-          return <CoachDashboard students={students} onAdd={handleAddStudent} onDelete={handleDeleteStudent} onSelect={setActiveStudentId} />;
+          return <CoachDashboard 
+                   students={students} 
+                   onAdd={handleAddStudent} 
+                   onDelete={handleDeleteStudent} 
+                   onSelect={setActiveStudentId} 
+                   onImport={handleImportData}
+                 />;
         }
 
         // ==========================================
         // BİLEŞEN 1: KOÇLUK EKRANI (DASHBOARD)
         // ==========================================
-        function CoachDashboard({ students, onAdd, onDelete, onSelect }) {
+        function CoachDashboard({ students, onAdd, onDelete, onSelect, onImport }) {
           const [newName, setNewName] = useState('');
+          const fileInputRef = React.useRef(null);
+
+          const handleExport = () => {
+            const dataStr = JSON.stringify(students);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const exportFileDefaultName = `yks_takip_yedek_${new Date().toISOString().slice(0,10)}.json`;
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+          };
+
+          const handleFileChange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              try {
+                const parsed = JSON.parse(event.target.result);
+                if (Array.isArray(parsed)) {
+                  onImport(parsed);
+                } else {
+                  alert("Geçersiz yedek dosyası!");
+                }
+              } catch (err) {
+                alert("Dosya okuma hatası! Lütfen geçerli bir yedek dosyası seçin.");
+              }
+            };
+            reader.readAsText(file);
+            e.target.value = ''; // Input'u temizle
+          };
 
           return (
             <div className="min-h-screen bg-slate-50 p-6 md:p-12 font-sans text-slate-800">
               <div className="max-w-7xl mx-auto">
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="bg-indigo-600 p-3 rounded-xl shadow-lg shadow-indigo-200 text-white">
-                    <Users size={32} />
+                
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-indigo-600 p-3 rounded-xl shadow-lg shadow-indigo-200 text-white">
+                      <Users size={32} />
+                    </div>
+                    <div>
+                      <h1 className="text-3xl font-extrabold text-indigo-900">YKS Öğrenci Takip Paneli</h1>
+                      <p className="text-slate-500">Öğrencilerinin tüm ilerlemelerini tek ekrandan yönet.</p>
+                    </div>
                   </div>
-                  <div>
-                    <h1 className="text-3xl font-extrabold text-indigo-900">YKS Öğrenci Takip Paneli</h1>
-                    <p className="text-slate-500">Öğrencilerinin tüm ilerlemelerini tek ekrandan yönet.</p>
+                  
+                  {/* YEDEKLEME BUTONLARI */}
+                  <div className="flex gap-2 w-full md:w-auto">
+                    <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+                    <button onClick={() => fileInputRef.current.click()} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm text-sm">
+                      <Upload size={16} /> Yedeği Yükle
+                    </button>
+                    <button onClick={handleExport} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-2 rounded-lg font-bold hover:bg-indigo-100 transition-colors shadow-sm text-sm">
+                      <Download size={16} /> Yedekle (İndir)
+                    </button>
                   </div>
                 </div>
 
@@ -318,7 +377,7 @@
                   </div>
                 )}
 
-                {/* YENİ: Öğrenci Karşılaştırma Tablosu */}
+                {/* Öğrenci Karşılaştırma Tablosu */}
                 {students.length > 0 && (
                   <div className="mt-12 bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
                     <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
@@ -441,7 +500,6 @@
             setIsTimerActive(false);
           };
 
-          // Gelişmiş Kategoriler (TYT, AYT, YDT Tümü Dahil Edildi)
           const categories = ['Genel', ...new Set([...Object.keys(yksKonulari), ...subjects.map(s => s.category)])];
 
           const addResource = () => {
